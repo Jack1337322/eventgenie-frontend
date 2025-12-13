@@ -116,7 +116,9 @@ export function Dashboard() {
             <Users className="size-4 text-slate-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{totalGuests.toLocaleString('ru-RU')}</div>
+            <div className="text-2xl font-bold text-slate-900">
+              {totalGuests != null ? totalGuests.toLocaleString('ru-RU') : '0'}
+            </div>
             <p className="text-xs text-slate-600 mt-1">
               Всего участников
             </p>
@@ -207,7 +209,7 @@ export function Dashboard() {
                   </div>
                   <div className="text-right ml-4">
                     <div className="text-sm font-semibold text-slate-900">
-                      {event.budgetLimit?.toLocaleString('ru-RU')} ₽
+                      {event.budgetLimit != null ? event.budgetLimit.toLocaleString('ru-RU') : '0'} ₽
                     </div>
                     <div className="text-xs text-slate-600">Бюджет</div>
                   </div>

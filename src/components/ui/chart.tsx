@@ -211,12 +211,10 @@ function ChartTooltipContent({
                             "my-0.5": nestLabel && indicator === "dashed",
                           },
                         )}
-                        style={
-                          {
-                            "--color-bg": indicatorColor,
-                            "--color-border": indicatorColor,
-                          } as React.CSSProperties
-                        }
+                        style={{
+                          "--color-bg": indicatorColor,
+                          "--color-border": indicatorColor,
+                        } as React.CSSProperties}
                       />
                     )
                   )}
@@ -232,7 +230,7 @@ function ChartTooltipContent({
                         {itemConfig?.label || item.name}
                       </span>
                     </div>
-                    {item.value && (
+                    {item.value != null && (
                       <span className="text-foreground font-mono font-medium tabular-nums">
                         {item.value.toLocaleString()}
                       </span>

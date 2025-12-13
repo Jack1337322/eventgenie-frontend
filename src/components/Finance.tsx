@@ -190,7 +190,9 @@ export function Finance() {
                 </div>
                 <div>
                   <span className="text-slate-600">Лимит бюджета:</span>
-                  <span className="ml-2 font-medium">{selectedEvent.budgetLimit?.toLocaleString('ru-RU')} ₽</span>
+                  <span className="ml-2 font-medium">
+                    {selectedEvent.budgetLimit != null ? selectedEvent.budgetLimit.toLocaleString('ru-RU') : '0'} ₽
+                  </span>
                 </div>
               </div>
             </div>
@@ -334,7 +336,9 @@ export function Finance() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => `${value.toLocaleString('ru-RU')} ₽`} />
+                    <Tooltip formatter={(value: number) => 
+                      value != null ? `${value.toLocaleString('ru-RU')} ₽` : '0 ₽'
+                    } />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
