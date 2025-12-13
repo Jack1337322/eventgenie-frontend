@@ -17,16 +17,28 @@ type NavItem = {
   component: React.ReactNode;
 };
 
-const navItems: NavItem[] = [
-  { id: "dashboard", label: "Дашборд", icon: <LayoutDashboard className="size-5" />, component: <Dashboard /> },
-  { id: "planning", label: "Планирование событий", icon: <Calendar className="size-5" />, component: <EventPlanning /> },
-  { id: "finance", label: "Финансы и сметы", icon: <Wallet className="size-5" />, component: <Finance /> },
+const navItems: Omit<NavItem, 'component'>[] = [
+  { id: "dashboard", label: "Дашборд", icon: <LayoutDashboard className="size-5" /> },
+  { id: "planning", label: "Планирование событий", icon: <Calendar className="size-5" /> },
+  { id: "finance", label: "Финансы и сметы", icon: <Wallet className="size-5" /> },
 ];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
 
-  const activeComponent = navItems.find(item => item.id === activeTab)?.component;
+  // Render component only when tab is active
+  const renderActiveComponent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <Dashboard />;
+      case "planning":
+        return <EventPlanning />;
+      case "finance":
+        return <Finance />;
+      default:
+        return <Dashboard />;
+    }
+  };
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -66,7 +78,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        {activeComponent}
+        {renderActiveComponent()}
       </main>
     </div>
   );

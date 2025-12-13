@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Badge } from "./ui/badge";
-import { Calendar, FileText, Loader2, Sparkles } from "lucide-react";
+import { Calendar, FileText, Loader2, Sparkles, Check, Plus, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { apiClient, type EventCreateRequest, type EventResponse, type EventPlanResponse } from "../api/client";
 
@@ -15,52 +15,113 @@ export function EventPlanning() {
   const [createdEvent, setCreatedEvent] = useState<EventResponse | null>(null);
   const [generatedPlan, setGeneratedPlan] = useState<EventPlanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure component is mounted before rendering
+  useEffect(() => {
+    try {
+      setMounted(true);
+    } catch (e) {
+      console.error('Error mounting EventPlanning:', e);
+      setRenderError('Ошибка инициализации компонента');
+    }
+    return () => setMounted(false);
+  }, []);
+
+  // Valid values for Select components
+  const validEventTypes = ["conference", "wedding", "corporate", "exhibition", "concert"];
+  const validFormats = ["offline", "online", "hybrid"];
 
   // Form state - пустые поля для нового события
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    eventType: "conference",
-    eventDate: "",
-    eventTime: "09:00",
-    location: "",
-    expectedGuests: "",
-    budgetLimit: "",
-    targetAudience: "",
-    format: "hybrid",
-    clientCompany: "",
-    clientContact: "",
-    clientEmail: "",
-    clientPhone: "",
+    name: "" as string,
+    description: "" as string,
+    eventType: "conference" as string,
+    eventDate: "" as string,
+    eventTime: "09:00" as string,
+    location: "" as string,
+    expectedGuests: "" as string,
+    budgetLimit: "" as string,
+    targetAudience: "" as string,
+    format: "hybrid" as string,
+    clientCompany: "" as string,
+    clientContact: "" as string,
+    clientEmail: "" as string,
+    clientPhone: "" as string,
   });
+
+  // Ensure Select values are always valid on mount
+  useEffect(() => {
+    if (!validEventTypes.includes(formData.eventType)) {
+      setFormData(prev => ({ ...prev, eventType: "conference" }));
+    }
+    if (!validFormats.includes(formData.format)) {
+      setFormData(prev => ({ ...prev, format: "hybrid" }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreateEvent = async () => {
     try {
       setLoading(true);
       setError(null);
 
+      // Валидация обязательных полей
+      if (!formData.name.trim()) {
+        alert('Пожалуйста, введите название события');
+        setLoading(false);
+        return;
+      }
+      if (!formData.eventDate) {
+        alert('Пожалуйста, выберите дату события');
+        setLoading(false);
+        return;
+      }
+      if (!formData.location.trim()) {
+        alert('Пожалуйста, укажите место проведения');
+        setLoading(false);
+        return;
+      }
+
+      const expectedGuests = parseInt(formData.expectedGuests) || 0;
+      const budgetLimit = parseFloat(formData.budgetLimit) || 0;
+
+      if (expectedGuests <= 0) {
+        alert('Пожалуйста, укажите количество гостей');
+        setLoading(false);
+        return;
+      }
+      if (budgetLimit <= 0) {
+        alert('Пожалуйста, укажите бюджет');
+        setLoading(false);
+        return;
+      }
+
       const eventData: EventCreateRequest = {
-        name: formData.name,
-        description: formData.description,
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
         eventType: formData.eventType,
         eventDate: `${formData.eventDate}T${formData.eventTime}:00`,
-        location: formData.location,
-        expectedGuests: parseInt(formData.expectedGuests),
-        budgetLimit: parseFloat(formData.budgetLimit),
-        targetAudience: formData.targetAudience,
+        location: formData.location.trim(),
+        expectedGuests,
+        budgetLimit,
+        targetAudience: formData.targetAudience.trim() || undefined,
         format: formData.format,
-        clientCompany: formData.clientCompany,
-        clientContact: formData.clientContact,
-        clientEmail: formData.clientEmail,
-        clientPhone: formData.clientPhone,
+        clientCompany: formData.clientCompany.trim() || undefined,
+        clientContact: formData.clientContact.trim() || undefined,
+        clientEmail: formData.clientEmail.trim() || undefined,
+        clientPhone: formData.clientPhone.trim() || undefined,
       };
 
       const event = await apiClient.createEvent(eventData);
       setCreatedEvent(event);
       alert(`Событие "${event.name}" успешно создано!`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка создания события');
-      alert('Ошибка создания события: ' + (err instanceof Error ? err.message : 'Неизвестная ошибка'));
+      const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка';
+      setError(errorMessage);
+      alert('Ошибка создания события: ' + errorMessage);
+      console.error('Error creating event:', err);
     } finally {
       setLoading(false);
     }
@@ -72,24 +133,88 @@ export function EventPlanning() {
       return;
     }
 
+    if (!createdEvent.id) {
+      alert('Ошибка: ID события не найден');
+      return;
+    }
+
     try {
       setPlanLoading(true);
       setError(null);
 
       const plan = await apiClient.generateEventPlan(createdEvent.id);
-      setGeneratedPlan(plan);
-      alert('План события успешно сгенерирован!');
+      if (plan) {
+        setGeneratedPlan(plan);
+        alert('План события успешно сгенерирован!');
+      } else {
+        throw new Error('План не был получен от сервера');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка генерации плана');
-      alert('Ошибка генерации плана: ' + (err instanceof Error ? err.message : 'Неизвестная ошибка'));
+      const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка';
+      setError(errorMessage);
+      alert('Ошибка генерации плана: ' + errorMessage);
+      console.error('Error generating plan:', err);
     } finally {
       setPlanLoading(false);
     }
   };
 
-  // Parse timeline from generated plan
-  const timelinePhases = generatedPlan?.timeline?.timeline_phases || [];
-  const tasks = generatedPlan?.tasks?.tasks || [];
+  // Parse timeline from generated plan with safe access
+  const timelinePhases = (() => {
+    try {
+      if (!generatedPlan?.timeline) return [];
+      const phases = generatedPlan.timeline.timeline_phases;
+      return Array.isArray(phases) ? phases : [];
+    } catch (e) {
+      console.error('Error parsing timeline phases:', e);
+      return [];
+    }
+  })();
+
+  const tasks = (() => {
+    try {
+      if (!generatedPlan?.tasks) return [];
+      const taskList = generatedPlan.tasks.tasks;
+      return Array.isArray(taskList) ? taskList : [];
+    } catch (e) {
+      console.error('Error parsing tasks:', e);
+      return [];
+    }
+  })();
+
+  // Error boundary for rendering
+  if (renderError) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-red-900 font-semibold mb-2">Ошибка отображения</h2>
+          <p className="text-red-700 text-sm mb-4">{renderError}</p>
+          <button
+            onClick={() => {
+              setRenderError(null);
+              setCreatedEvent(null);
+              setGeneratedPlan(null);
+              setError(null);
+            }}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Сбросить
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render until mounted
+  if (!mounted) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="size-8 animate-spin text-slate-400" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -111,8 +236,8 @@ export function EventPlanning() {
                 <Input 
                   id="event-name" 
                   placeholder="Например: Конференция TechSummit 2025" 
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  value={formData.name || ""}
+                  onChange={(e) => setFormData({...formData, name: e.target.value || ""})}
                 />
               </div>
 
@@ -122,8 +247,8 @@ export function EventPlanning() {
                   <Input 
                     id="event-date" 
                     type="date" 
-                    value={formData.eventDate}
-                    onChange={(e) => setFormData({...formData, eventDate: e.target.value})}
+                  value={formData.eventDate || ""}
+                  onChange={(e) => setFormData({...formData, eventDate: e.target.value || ""})}
                   />
                 </div>
                 <div className="space-y-2">
@@ -131,8 +256,8 @@ export function EventPlanning() {
                   <Input 
                     id="event-time" 
                     type="time" 
-                    value={formData.eventTime}
-                    onChange={(e) => setFormData({...formData, eventTime: e.target.value})}
+                  value={formData.eventTime || "09:00"}
+                  onChange={(e) => setFormData({...formData, eventTime: e.target.value || "09:00"})}
                   />
                 </div>
               </div>
@@ -140,11 +265,15 @@ export function EventPlanning() {
               <div className="space-y-2">
                 <Label htmlFor="event-type">Тип события</Label>
                 <Select 
-                  value={formData.eventType}
-                  onValueChange={(value) => setFormData({...formData, eventType: value})}
+                  value={validEventTypes.includes(formData.eventType) ? formData.eventType : "conference"}
+                  onValueChange={(value) => {
+                    if (value && validEventTypes.includes(value)) {
+                      setFormData({...formData, eventType: value});
+                    }
+                  }}
                 >
                   <SelectTrigger id="event-type">
-                    <SelectValue />
+                    <SelectValue placeholder="Выберите тип" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="conference">Конференция</SelectItem>
@@ -159,11 +288,15 @@ export function EventPlanning() {
               <div className="space-y-2">
                 <Label htmlFor="event-format">Формат</Label>
                 <Select 
-                  value={formData.format}
-                  onValueChange={(value) => setFormData({...formData, format: value})}
+                  value={validFormats.includes(formData.format) ? formData.format : "hybrid"}
+                  onValueChange={(value) => {
+                    if (value && validFormats.includes(value)) {
+                      setFormData({...formData, format: value});
+                    }
+                  }}
                 >
                   <SelectTrigger id="event-format">
-                    <SelectValue />
+                    <SelectValue placeholder="Выберите формат" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="offline">Оффлайн</SelectItem>
@@ -178,8 +311,8 @@ export function EventPlanning() {
                 <Input 
                   id="event-location" 
                   placeholder="Адрес площадки" 
-                  value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  value={formData.location || ""}
+                  onChange={(e) => setFormData({...formData, location: e.target.value || ""})}
                 />
               </div>
 
@@ -190,8 +323,8 @@ export function EventPlanning() {
                     id="event-guests" 
                     type="number" 
                     placeholder="500" 
-                    value={formData.expectedGuests}
-                    onChange={(e) => setFormData({...formData, expectedGuests: e.target.value})}
+                  value={formData.expectedGuests || ""}
+                  onChange={(e) => setFormData({...formData, expectedGuests: e.target.value || ""})}
                   />
                 </div>
                 <div className="space-y-2">
@@ -200,8 +333,8 @@ export function EventPlanning() {
                     id="event-budget" 
                     type="number" 
                     placeholder="1000000" 
-                    value={formData.budgetLimit}
-                    onChange={(e) => setFormData({...formData, budgetLimit: e.target.value})}
+                  value={formData.budgetLimit || ""}
+                  onChange={(e) => setFormData({...formData, budgetLimit: e.target.value || ""})}
                   />
                 </div>
               </div>
@@ -211,8 +344,8 @@ export function EventPlanning() {
                 <Textarea 
                   id="event-audience" 
                   placeholder="Опишите целевую аудиторию..." 
-                  value={formData.targetAudience}
-                  onChange={(e) => setFormData({...formData, targetAudience: e.target.value})}
+                  value={formData.targetAudience || ""}
+                  onChange={(e) => setFormData({...formData, targetAudience: e.target.value || ""})}
                   rows={3}
                 />
               </div>
@@ -222,8 +355,8 @@ export function EventPlanning() {
                 <Textarea 
                   id="event-description" 
                   placeholder="Краткое описание мероприятия..." 
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  value={formData.description || ""}
+                  onChange={(e) => setFormData({...formData, description: e.target.value || ""})}
                   rows={4}
                 />
               </div>
@@ -250,7 +383,7 @@ export function EventPlanning() {
                     </>
                   ) : (
                     <>
-                      <Save className="size-4 mr-2" />
+                      <Check className="size-4 mr-2" />
                       Создать событие
                     </>
                   )}
@@ -292,8 +425,8 @@ export function EventPlanning() {
                 <Input 
                   id="client-name" 
                   placeholder="ООО Компания"
-                  value={formData.clientCompany}
-                  onChange={(e) => setFormData({...formData, clientCompany: e.target.value})}
+                  value={formData.clientCompany || ""}
+                  onChange={(e) => setFormData({...formData, clientCompany: e.target.value || ""})}
                 />
               </div>
               <div className="space-y-2">
@@ -301,8 +434,8 @@ export function EventPlanning() {
                 <Input 
                   id="client-contact" 
                   placeholder="Иванов Иван Иванович"
-                  value={formData.clientContact}
-                  onChange={(e) => setFormData({...formData, clientContact: e.target.value})}
+                  value={formData.clientContact || ""}
+                  onChange={(e) => setFormData({...formData, clientContact: e.target.value || ""})}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -312,8 +445,8 @@ export function EventPlanning() {
                     id="client-email" 
                     type="email" 
                     placeholder="email@company.ru"
-                    value={formData.clientEmail}
-                    onChange={(e) => setFormData({...formData, clientEmail: e.target.value})}
+                  value={formData.clientEmail || ""}
+                  onChange={(e) => setFormData({...formData, clientEmail: e.target.value || ""})}
                   />
                 </div>
                 <div className="space-y-2">
@@ -322,8 +455,8 @@ export function EventPlanning() {
                     id="client-phone" 
                     type="tel" 
                     placeholder="+7 (XXX) XXX-XX-XX"
-                    value={formData.clientPhone}
-                    onChange={(e) => setFormData({...formData, clientPhone: e.target.value})}
+                  value={formData.clientPhone || ""}
+                  onChange={(e) => setFormData({...formData, clientPhone: e.target.value || ""})}
                   />
                 </div>
               </div>
@@ -343,7 +476,7 @@ export function EventPlanning() {
               <p className="text-sm text-slate-600">Программа мероприятия на основе параметров и ИИ-анализа</p>
             </CardHeader>
             <CardContent>
-              {generatedPlan && timelinePhases.length > 0 ? (
+              {generatedPlan && Array.isArray(timelinePhases) && timelinePhases.length > 0 ? (
                 <>
                   <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-sm text-green-800 flex items-center gap-2">
@@ -352,12 +485,15 @@ export function EventPlanning() {
                     </p>
                   </div>
                   <div className="space-y-3">
-                    {timelinePhases.map((item: any, idx: number) => (
-                      <div key={idx} className="flex gap-4 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <div className="text-sm text-slate-600 min-w-[140px]">{item.time}</div>
-                        <div className="flex-1 text-sm text-slate-900">{item.activity || item.description}</div>
-                      </div>
-                    ))}
+                    {timelinePhases.map((item: any, idx: number) => {
+                      if (!item || typeof item !== 'object') return null;
+                      return (
+                        <div key={idx} className="flex gap-4 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                          <div className="text-sm text-slate-600 min-w-[140px]">{item?.time || '—'}</div>
+                          <div className="flex-1 text-sm text-slate-900">{item?.activity || item?.description || '—'}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </>
               ) : (
@@ -379,30 +515,33 @@ export function EventPlanning() {
               <p className="text-sm text-slate-600 mt-1">Список задач, сгенерированный ИИ</p>
             </CardHeader>
             <CardContent>
-              {tasks.length > 0 ? (
+              {Array.isArray(tasks) && tasks.length > 0 ? (
                 <div className="space-y-3">
-                  {tasks.map((task: any, idx: number) => (
-                    <div key={idx} className="flex items-start gap-4 p-4 border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-slate-900">{task.title}</h4>
-                        {task.description && (
-                          <p className="text-xs text-slate-600 mt-1">{task.description}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-2">
-                          {task.deadline_days && (
-                            <span className="text-xs text-slate-600">
-                              Срок: {task.deadline_days} дней
-                            </span>
+                  {tasks.map((task: any, idx: number) => {
+                    if (!task || typeof task !== 'object') return null;
+                    return (
+                      <div key={idx} className="flex items-start gap-4 p-4 border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-slate-900">{task?.title || 'Без названия'}</h4>
+                          {task?.description && (
+                            <p className="text-xs text-slate-600 mt-1">{task.description}</p>
                           )}
-                          {task.priority && (
-                            <Badge variant={task.priority === "HIGH" ? "destructive" : "secondary"} className="text-xs">
-                              {task.priority}
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-3 mt-2">
+                            {task?.deadline_days && (
+                              <span className="text-xs text-slate-600">
+                                Срок: {task.deadline_days} дней
+                              </span>
+                            )}
+                            {task?.priority && (
+                              <Badge variant={task.priority === "HIGH" ? "destructive" : "secondary"} className="text-xs">
+                                {task.priority}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12">
