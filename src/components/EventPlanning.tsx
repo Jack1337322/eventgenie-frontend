@@ -144,8 +144,8 @@ export function EventPlanning() {
 
       const plan = await apiClient.generateEventPlan(createdEvent.id);
       if (plan) {
-        setGeneratedPlan(plan);
-        alert('План события успешно сгенерирован!');
+      setGeneratedPlan(plan);
+      alert('План события успешно сгенерирован!');
       } else {
         throw new Error('План не был получен от сервера');
       }
@@ -488,10 +488,10 @@ export function EventPlanning() {
                     {timelinePhases.map((item: any, idx: number) => {
                       if (!item || typeof item !== 'object') return null;
                       return (
-                        <div key={idx} className="flex gap-4 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                      <div key={idx} className="flex gap-4 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
                           <div className="text-sm text-slate-600 min-w-[140px]">{item?.time || '—'}</div>
                           <div className="flex-1 text-sm text-slate-900">{item?.activity || item?.description || '—'}</div>
-                        </div>
+                      </div>
                       );
                     })}
                   </div>
@@ -520,26 +520,26 @@ export function EventPlanning() {
                   {tasks.map((task: any, idx: number) => {
                     if (!task || typeof task !== 'object') return null;
                     return (
-                      <div key={idx} className="flex items-start gap-4 p-4 border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
-                        <div className="flex-1">
+                    <div key={idx} className="flex items-start gap-4 p-4 border border-slate-200 rounded-lg hover:border-slate-300 transition-colors">
+                      <div className="flex-1">
                           <h4 className="text-sm font-medium text-slate-900">{task?.title || 'Без названия'}</h4>
                           {task?.description && (
-                            <p className="text-xs text-slate-600 mt-1">{task.description}</p>
-                          )}
-                          <div className="flex items-center gap-3 mt-2">
+                          <p className="text-xs text-slate-600 mt-1">{task.description}</p>
+                        )}
+                        <div className="flex items-center gap-3 mt-2">
                             {task?.deadline_days && (
-                              <span className="text-xs text-slate-600">
-                                Срок: {task.deadline_days} дней
-                              </span>
-                            )}
+                            <span className="text-xs text-slate-600">
+                              Срок: {task.deadline_days} дней
+                            </span>
+                          )}
                             {task?.priority && (
-                              <Badge variant={task.priority === "HIGH" ? "destructive" : "secondary"} className="text-xs">
-                                {task.priority}
-                              </Badge>
-                            )}
-                          </div>
+                            <Badge variant={task.priority === "HIGH" ? "destructive" : "secondary"} className="text-xs">
+                              {task.priority}
+                            </Badge>
+                          )}
                         </div>
                       </div>
+                    </div>
                     );
                   })}
                 </div>

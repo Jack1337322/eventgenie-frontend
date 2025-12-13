@@ -31,15 +31,27 @@ export function Dashboard() {
 
   // Calculate stats
   const totalEvents = events.length;
-  const upcomingEvents = events.filter(e => new Date(e.date) >= new Date()).length;
+  const upcomingEvents = events.filter(e => {
+    if (!e.eventDate) return false;
+    try {
+      return new Date(e.eventDate) >= new Date();
+    } catch {
+      return false;
+    }
+  }).length;
   const totalGuests = events.reduce((sum, e) => sum + (e.expectedGuests || 0), 0);
-  const totalBudget = events.reduce((sum, e) => sum + (e.budgetLimit || 0), 0);
-  const eventsWithPlans = events.filter(e => e.planGenerated).length;
+  const totalBudget = events.reduce((sum, e) => sum + (Number(e.budgetLimit) || 0), 0);
+  const eventsWithPlans = 0; // TODO: Add planGenerated field to EventResponse
 
   // Group events by month for chart
   const eventsByMonth = events.reduce((acc, event) => {
-    const month = new Date(event.date).toLocaleDateString('ru-RU', { month: 'short' });
+    if (!event.eventDate) return acc;
+    try {
+      const month = new Date(event.eventDate).toLocaleDateString('ru-RU', { month: 'short' });
     acc[month] = (acc[month] || 0) + 1;
+    } catch {
+      // Skip invalid dates
+    }
     return acc;
   }, {} as Record<string, number>);
 
@@ -173,17 +185,18 @@ export function Dashboard() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h4 className="text-sm font-medium text-slate-900">{event.name}</h4>
-                      {event.planGenerated && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Sparkles className="size-3 mr-1" />
-                          План создан
-                        </Badge>
-                      )}
+                      {/* TODO: Add planGenerated field to EventResponse */}
                     </div>
                     <div className="flex items-center gap-4 mt-1 text-xs text-slate-600">
                       <span className="flex items-center gap-1">
                         <Calendar className="size-3" />
-                        {new Date(event.date).toLocaleDateString('ru-RU')}
+                        {event.eventDate ? (() => {
+                          try {
+                            return new Date(event.eventDate).toLocaleDateString('ru-RU');
+                          } catch {
+                            return 'Неверная дата';
+                          }
+                        })() : 'Дата не указана'}
                       </span>
                       <span className="flex items-center gap-1">
                         <Users className="size-3" />

@@ -77,17 +77,17 @@ export function Finance() {
 
   const selectedEvent = events.find(e => e.id === selectedEventId);
   const budgetItems = budget?.items || [];
-  const totalAmount = budgetItems.reduce((sum, item) => sum + item.amount, 0);
+  const totalAmount = budgetItems.reduce((sum, item) => sum + (Number(item.plannedAmount) || 0), 0);
 
   // Prepare chart data
   const chartData = budgetItems.map(item => ({
     name: item.category,
-    amount: item.amount / 1000 // в тысячах
+    amount: (Number(item.plannedAmount) || 0) / 1000 // в тысячах
   }));
 
   const pieData = budgetItems.map((item, idx) => ({
     name: item.category,
-    value: item.amount,
+    value: Number(item.plannedAmount) || 0,
     color: COLORS[idx % COLORS.length]
   }));
 
@@ -134,7 +134,13 @@ export function Finance() {
                 <SelectContent>
                   {events.map((event) => (
                     <SelectItem key={event.id} value={event.id.toString()}>
-                      {event.name} - {new Date(event.date).toLocaleDateString('ru-RU')}
+                      {event.name} - {event.eventDate ? (() => {
+                        try {
+                          return new Date(event.eventDate).toLocaleDateString('ru-RU');
+                        } catch {
+                          return 'Неверная дата';
+                        }
+                      })() : 'Дата не указана'}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -164,7 +170,15 @@ export function Finance() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-slate-600">Дата:</span>
-                  <span className="ml-2 font-medium">{new Date(selectedEvent.date).toLocaleDateString('ru-RU')}</span>
+                  <span className="ml-2 font-medium">
+                    {selectedEvent.eventDate ? (() => {
+                      try {
+                        return new Date(selectedEvent.eventDate).toLocaleDateString('ru-RU');
+                      } catch {
+                        return 'Неверная дата';
+                      }
+                    })() : 'Дата не указана'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-600">Место:</span>
@@ -202,14 +216,12 @@ export function Finance() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-slate-900">
-                  {totalAmount.toLocaleString('ru-RU')} ₽
+                  {Number(budget.totalAmount || 0).toLocaleString('ru-RU')} ₽
                 </div>
-                {budget.generatedByAi && (
                   <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
                     <Sparkles className="size-3" />
                     Сгенерировано с помощью GigaChat
                   </p>
-                )}
               </CardContent>
             </Card>
 
@@ -230,12 +242,16 @@ export function Finance() {
               </CardHeader>
               <CardContent>
                 <Badge variant="default" className="text-sm">
-                  {budget.status === 'DRAFT' ? 'Черновик' : 
-                   budget.status === 'APPROVED' ? 'Утвержден' : 
-                   budget.status}
+                  Активен
                 </Badge>
                 <p className="text-xs text-slate-600 mt-2">
-                  {new Date(budget.createdAt).toLocaleDateString('ru-RU')}
+                  {budget.createdAt ? (() => {
+                    try {
+                      return new Date(budget.createdAt).toLocaleDateString('ru-RU');
+                    } catch {
+                      return 'Дата не указана';
+                    }
+                  })() : 'Дата не указана'}
                 </p>
               </CardContent>
             </Card>
@@ -262,10 +278,10 @@ export function Finance() {
                     </div>
                     <div className="text-right ml-4">
                       <div className="text-lg font-semibold text-slate-900">
-                        {item.amount.toLocaleString('ru-RU')} ₽
+                        {Number(item.plannedAmount || 0).toLocaleString('ru-RU')} ₽
                       </div>
                       <div className="text-xs text-slate-600">
-                        {((item.amount / totalAmount) * 100).toFixed(1)}% от общего
+                        {totalAmount > 0 ? ((Number(item.plannedAmount || 0) / totalAmount) * 100).toFixed(1) : 0}% от общего
                       </div>
                     </div>
                   </div>
@@ -325,16 +341,6 @@ export function Finance() {
             </Card>
           </div>
 
-          {budget.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Примечания ИИ</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-slate-700 whitespace-pre-wrap">{budget.notes}</p>
-              </CardContent>
-            </Card>
-          )}
         </>
       ) : (
         <Card>
