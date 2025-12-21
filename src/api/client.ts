@@ -1,5 +1,44 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+// Auth interfaces
+export interface AuthRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  email: string;
+  role: string;
+  expiresIn: number;
+}
+
+export interface UserResponse {
+  id: number;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserCreateRequest {
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+}
+
+export interface UserUpdateRequest {
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  enabled?: boolean;
+}
+
 export interface EventCreateRequest {
   name: string;
   description?: string;
@@ -65,9 +104,25 @@ export interface BudgetResponse {
 
 class ApiClient {
   private baseUrl: string;
+  private token: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+    // Load token from localStorage on initialization
+    this.token = localStorage.getItem('auth_token');
+  }
+
+  setToken(token: string | null) {
+    this.token = token;
+    if (token) {
+      localStorage.setItem('auth_token', token);
+    } else {
+      localStorage.removeItem('auth_token');
+    }
+  }
+
+  getToken(): string | null {
+    return this.token;
   }
 
   private async request<T>(
@@ -76,9 +131,14 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
-    const defaultHeaders = {
+    const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
     };
+
+    // Add Authorization header if token exists
+    if (this.token) {
+      defaultHeaders['Authorization'] = `Bearer ${this.token}`;
+    }
 
     const config: RequestInit = {
       ...options,
@@ -92,6 +152,13 @@ class ApiClient {
       const response = await fetch(url, config);
 
       if (!response.ok) {
+        // Handle 401 Unauthorized - token expired or invalid
+        if (response.status === 401) {
+          this.setToken(null);
+          // Dispatch custom event for auth context to handle
+          window.dispatchEvent(new CustomEvent('auth:logout'));
+          throw new Error('Unauthorized: Please login again');
+        }
         const error = await response.text();
         throw new Error(`API Error: ${response.status} - ${error}`);
       }
@@ -101,6 +168,59 @@ class ApiClient {
       console.error('API Request failed:', error);
       throw error;
     }
+  }
+
+  // Auth API
+  async register(data: AuthRequest): Promise<AuthResponse> {
+    return this.request<AuthResponse>('/api/v1/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async login(data: AuthRequest): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    // Automatically set token after successful login
+    if (response.token) {
+      this.setToken(response.token);
+    }
+    return response;
+  }
+
+  async getCurrentUser(): Promise<UserResponse> {
+    return this.request<UserResponse>('/api/v1/auth/me');
+  }
+
+  // Admin API
+  async getAllUsers(): Promise<UserResponse[]> {
+    return this.request<UserResponse[]>('/api/v1/admin/users');
+  }
+
+  async getUserById(id: number): Promise<UserResponse> {
+    return this.request<UserResponse>(`/api/v1/admin/users/${id}`);
+  }
+
+  async createUser(data: UserCreateRequest): Promise<UserResponse> {
+    return this.request<UserResponse>('/api/v1/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateUser(id: number, data: UserUpdateRequest): Promise<UserResponse> {
+    return this.request<UserResponse>(`/api/v1/admin/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    return this.request<void>(`/api/v1/admin/users/${id}`, {
+      method: 'DELETE',
+    });
   }
 
   // Events API
