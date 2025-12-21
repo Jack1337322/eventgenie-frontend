@@ -211,10 +211,12 @@ function ChartTooltipContent({
                             "my-0.5": nestLabel && indicator === "dashed",
                           },
                         )}
-                        style={{
-                          "--color-bg": indicatorColor,
-                          "--color-border": indicatorColor,
-                        } as React.CSSProperties}
+                        style={
+                          {
+                            "--color-bg": indicatorColor,
+                            "--color-border": indicatorColor,
+                          } as React.CSSProperties
+                        }
                       />
                     )
                   )}
