@@ -1,5 +1,8 @@
 FROM node:20-alpine AS build
 
+# Accept build argument for VITE_API_URL
+ARG VITE_API_URL=http://localhost:8080
+
 WORKDIR /app
 
 # Copy package files
@@ -11,8 +14,8 @@ RUN npm install
 # Copy all necessary files for build
 COPY . .
 
-# Create .env file with build-time variables
-RUN echo "VITE_API_URL=http://localhost:8080" > .env
+# Create .env file with build-time variables from ARG
+RUN echo "VITE_API_URL=${VITE_API_URL}" > .env
 
 # Build for production
 RUN npm run build
@@ -32,4 +35,3 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 3000
 
 CMD ["nginx", "-g", "daemon off;"]
-
