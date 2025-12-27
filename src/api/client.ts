@@ -172,10 +172,15 @@ class ApiClient {
 
   // Auth API
   async register(data: AuthRequest): Promise<AuthResponse> {
-    return this.request<AuthResponse>('/api/v1/auth/register', {
+    const response = await this.request<AuthResponse>('/api/v1/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    // Automatically set token after successful registration
+    if (response.token) {
+      this.setToken(response.token);
+    }
+    return response;
   }
 
   async login(data: AuthRequest): Promise<AuthResponse> {
@@ -263,4 +268,3 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
-
